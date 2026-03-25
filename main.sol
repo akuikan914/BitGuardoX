@@ -304,3 +304,105 @@ contract BitGuardoX {
         }
         emit RelayChallengeResolved(relayId, success, challengeRef);
     }
+
+    function slashRelay(bytes32 relayId, uint256 slashBps, bytes32 slashRef) external onlySentinelOrOwner whenNotPaused {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (slashBps == 0 || slashBps > relayMaxSlashBps) revert BGXInvalidConfig();
+        uint256 slashWei = (relayBondWei[relayId] * slashBps) / BASIS;
+        if (slashWei == 0) revert BGXInvalidConfig();
+        relayBondWei[relayId] -= slashWei;
+        relaySlashDebtWei[relayId] += slashWei;
+        totalRelaySlashedWei += slashWei;
+        quarantineVaultWei += slashWei;
+        emit RelaySlashed(relayId, slashWei, relaySlashDebtWei[relayId], slashRef);
+    }
+
+    function accrueRelayReward(bytes32 relayId, bytes32 rewardRef) external payable onlySentinelOrOwner whenNotPaused {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (msg.value == 0) revert BGXInvalidConfig();
+        relayEscrowedRewardsWei[relayId] += msg.value;
+        totalRelayRewardsWei += msg.value;
+        emit RelayRewardAccrued(relayId, msg.value, rewardRef);
+    }
+
+    function claimRelayReward(bytes32 relayId, uint256 amountWei, address payable to) external onlyOwner whenNotPaused {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (to == address(0)) revert BGXInvalidAddress();
+        if (amountWei == 0 || amountWei > relayEscrowedRewardsWei[relayId]) revert BGXInsufficientBalance();
+        relayEscrowedRewardsWei[relayId] -= amountWei;
+        _safeTransferETH(to, amountWei);
+        emit RelayRewardClaimed(relayId, to, amountWei);
+    }
+
+    function openSession(bytes32 relayId, uint64 ttlSeconds) external payable whenNotPaused returns (bytes32 sessionId) {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (relayBondWei[relayId] < relayMinBondWei) revert BGXInvalidConfig();
+        if (msg.value < MIN_COLLATERAL_WEI || msg.value > MAX_COLLATERAL_WEI) revert BGXInvalidConfig();
+        if (ttlSeconds == 0 || ttlSeconds > MAX_TTL) revert BGXInvalidConfig();
+
+        sessionId = keccak256(
+            abi.encodePacked(
+                DOMAIN_VPN,
+                relayId,
+                msg.sender,
+                block.number,
+                block.prevrandao,
+                totalSessionsOpened
+            )
+        );
+
+        Session storage s = sessions[sessionId];
+        s.account = msg.sender;
+        s.relayId = relayId;
+        s.openedAt = uint96(block.timestamp);
+        s.ttlSeconds = ttlSeconds;
+        s.collateralWei = uint96(msg.value);
+        s.flagged = false;
+        s.closed = false;
+
+        userCollateralWei[msg.sender] += msg.value;
+        unchecked {
+            totalSessionsOpened++;
+        }
+
+        emit SessionOpened(sessionId, relayId, msg.sender, msg.value);
+    }
+
+    function extendSession(bytes32 sessionId, uint64 extraTtlSeconds) external payable whenNotPaused {
+        Session storage s = sessions[sessionId];
+        if (s.account == address(0)) revert BGXSessionUnknown(sessionId);
+        if (s.closed) revert BGXInvalidConfig();
+        if (msg.sender != s.account) revert BGXUnauthorized();
+        if (extraTtlSeconds == 0 || uint256(s.ttlSeconds) + uint256(extraTtlSeconds) > MAX_TTL) revert BGXInvalidConfig();
+        if (msg.value > 0) {
+            if (uint256(s.collateralWei) + msg.value > MAX_COLLATERAL_WEI) revert BGXInvalidConfig();
+            s.collateralWei = uint96(uint256(s.collateralWei) + msg.value);
+            userCollateralWei[msg.sender] += msg.value;
+        }
+        s.ttlSeconds += extraTtlSeconds;
+        emit SessionExtended(sessionId, s.ttlSeconds, msg.value);
+    }
+
+    function flagSession(bytes32 sessionId, uint32 reasonCode) external onlySentinelOrOwner whenNotPaused {
+        Session storage s = sessions[sessionId];
+        if (s.account == address(0)) revert BGXSessionUnknown(sessionId);
+        if (s.closed) revert BGXInvalidConfig();
+        if (s.flagged) revert BGXAlreadyFlagged(sessionId);
+
+        s.flagged = true;
+        emit SessionFlagged(sessionId, reasonCode, uint64(block.number));
+    }
+
+    function flagSessionByDigest(bytes32 sessionId, bytes32 alertDigest, uint32 reasonCode) external whenNotPaused {
+        if (!(msg.sender == sentinel || msg.sender == owner || trustedScanners[msg.sender])) revert BGXUnauthorized();
+        if (alertDigests[alertDigest]) revert BGXInvalidConfig();
+        Session storage s = sessions[sessionId];
+        if (s.account == address(0)) revert BGXSessionUnknown(sessionId);
+        if (s.closed || s.flagged) revert BGXInvalidConfig();
+        s.flagged = true;
+        alertDigests[alertDigest] = true;
+        emit AlertDigestMarked(alertDigest, s.relayId, uint64(block.number));
