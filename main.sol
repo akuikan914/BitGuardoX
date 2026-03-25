@@ -406,3 +406,105 @@ contract BitGuardoX {
         s.flagged = true;
         alertDigests[alertDigest] = true;
         emit AlertDigestMarked(alertDigest, s.relayId, uint64(block.number));
+        emit SessionFlagged(sessionId, reasonCode, uint64(block.number));
+    }
+
+    function closeSession(bytes32 sessionId) external whenNotPaused {
+        Session storage s = sessions[sessionId];
+        if (s.account == address(0)) revert BGXSessionUnknown(sessionId);
+        if (s.closed) revert BGXInvalidConfig();
+        if (msg.sender != s.account && msg.sender != owner && msg.sender != sentinel) revert BGXUnauthorized();
+
+        s.closed = true;
+        uint256 collateral = s.collateralWei;
+        uint256 penaltyBps = _resolvePenaltyBps(s);
+        uint256 penalty = (collateral * penaltyBps) / BASIS;
+        uint256 protocolFee = (collateral * PROTOCOL_FEE_BPS) / BASIS;
+        uint256 refund = collateral - penalty - protocolFee;
+
+        userCollateralWei[s.account] -= collateral;
+        quarantineVaultWei += penalty;
+        unchecked {
+            totalSessionsClosed++;
+        }
+
+        _safeTransferETH(payable(treasury), protocolFee);
+        _safeTransferETH(payable(s.account), refund);
+
+        emit SessionClosed(sessionId, s.account, refund, penalty);
+    }
+
+    function quarantineRelease(address payable to, uint256 amountWei, bytes32 releaseRef) external onlySentinelOrOwner {
+        if (to == address(0)) revert BGXInvalidAddress();
+        if (amountWei == 0 || amountWei > quarantineVaultWei) revert BGXInsufficientBalance();
+        quarantineVaultWei -= amountWei;
+        _safeTransferETH(to, amountWei);
+        emit QuarantineSpent(to, amountWei, releaseRef);
+    }
+
+    function estimateSessionReturn(bytes32 sessionId) external view returns (uint256 refundWei, uint256 penaltyWei) {
+        Session storage s = sessions[sessionId];
+        if (s.account == address(0)) revert BGXSessionUnknown(sessionId);
+        if (s.closed) return (0, 0);
+        uint256 collateral = s.collateralWei;
+        uint256 penaltyBps = _resolvePenaltyBps(s);
+        penaltyWei = (collateral * penaltyBps) / BASIS;
+        uint256 protocolFee = (collateral * PROTOCOL_FEE_BPS) / BASIS;
+        refundWei = collateral - penaltyWei - protocolFee;
+    }
+
+    function relayDigest(bytes32 relayId) external view returns (bytes32 digest) {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        digest = keccak256(
+            abi.encodePacked(
+                DOMAIN_SCAN,
+                relayId,
+                relay.operator,
+                relay.bandwidthScore,
+                relay.healthIndex,
+                relay.malwareRiskBps
+            )
+        );
+    }
+
+    function configDigest() external view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                DOMAIN_QUARANTINE,
+                bootstrapRouter,
+                bootstrapBridge,
+                bootstrapOracle,
+                owner,
+                sentinel,
+                treasury,
+                block.chainid
+            )
+        );
+    }
+
+    function relayFinanceSnapshot(bytes32 relayId)
+        external
+        view
+        returns (
+            uint256 bondWei,
+            uint256 slashDebtWei,
+            uint256 rewardsWei,
+            uint256 challengeEndsAt,
+            bytes32 latestDigest
+        )
+    {
+        bondWei = relayBondWei[relayId];
+        slashDebtWei = relaySlashDebtWei[relayId];
+        rewardsWei = relayEscrowedRewardsWei[relayId];
+        challengeEndsAt = relayChallengeWindowEndsAt[relayId];
+        latestDigest = relayLatestDigest[relayId];
+    }
+
+    function sessionForensics(bytes32 sessionId)
+        external
+        view
+        returns (
+            bool exists,
+            bool active,
+            bool timedOut,
