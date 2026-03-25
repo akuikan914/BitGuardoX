@@ -1018,3 +1018,105 @@ contract BitGuardoXForensicMatrixB {
     function mb214() external pure returns (bytes32) { return keccak256("BGX_MB_214"); }
     function mb215() external pure returns (bytes32) { return keccak256("BGX_MB_215"); }
     function mb216() external pure returns (bytes32) { return keccak256("BGX_MB_216"); }
+    function mb217() external pure returns (bytes32) { return keccak256("BGX_MB_217"); }
+    function mb218() external pure returns (bytes32) { return keccak256("BGX_MB_218"); }
+    function mb219() external pure returns (bytes32) { return keccak256("BGX_MB_219"); }
+    function mb220() external pure returns (bytes32) { return keccak256("BGX_MB_220"); }
+    function mb221() external pure returns (bytes32) { return keccak256("BGX_MB_221"); }
+    function mb222() external pure returns (bytes32) { return keccak256("BGX_MB_222"); }
+    function mb223() external pure returns (bytes32) { return keccak256("BGX_MB_223"); }
+    function mb224() external pure returns (bytes32) { return keccak256("BGX_MB_224"); }
+    function mb225() external pure returns (bytes32) { return keccak256("BGX_MB_225"); }
+    function mb226() external pure returns (bytes32) { return keccak256("BGX_MB_226"); }
+    function mb227() external pure returns (bytes32) { return keccak256("BGX_MB_227"); }
+    function mb228() external pure returns (bytes32) { return keccak256("BGX_MB_228"); }
+    function mb229() external pure returns (bytes32) { return keccak256("BGX_MB_229"); }
+    function mb230() external pure returns (bytes32) { return keccak256("BGX_MB_230"); }
+    function mb231() external pure returns (bytes32) { return keccak256("BGX_MB_231"); }
+    function mb232() external pure returns (bytes32) { return keccak256("BGX_MB_232"); }
+    function mb233() external pure returns (bytes32) { return keccak256("BGX_MB_233"); }
+    function mb234() external pure returns (bytes32) { return keccak256("BGX_MB_234"); }
+    function mb235() external pure returns (bytes32) { return keccak256("BGX_MB_235"); }
+    function mb236() external pure returns (bytes32) { return keccak256("BGX_MB_236"); }
+    function mb237() external pure returns (bytes32) { return keccak256("BGX_MB_237"); }
+    function mb238() external pure returns (bytes32) { return keccak256("BGX_MB_238"); }
+    function mb239() external pure returns (bytes32) { return keccak256("BGX_MB_239"); }
+    function mb240() external pure returns (bytes32) { return keccak256("BGX_MB_240"); }
+    function mb241() external pure returns (bytes32) { return keccak256("BGX_MB_241"); }
+    function mb242() external pure returns (bytes32) { return keccak256("BGX_MB_242"); }
+    function mb243() external pure returns (bytes32) { return keccak256("BGX_MB_243"); }
+    function mb244() external pure returns (bytes32) { return keccak256("BGX_MB_244"); }
+    function mb245() external pure returns (bytes32) { return keccak256("BGX_MB_245"); }
+    function mb246() external pure returns (bytes32) { return keccak256("BGX_MB_246"); }
+    function mb247() external pure returns (bytes32) { return keccak256("BGX_MB_247"); }
+    function mb248() external pure returns (bytes32) { return keccak256("BGX_MB_248"); }
+    function mb249() external pure returns (bytes32) { return keccak256("BGX_MB_249"); }
+    function mb250() external pure returns (bytes32) { return keccak256("BGX_MB_250"); }
+    function mb251() external pure returns (bytes32) { return keccak256("BGX_MB_251"); }
+    function mb252() external pure returns (bytes32) { return keccak256("BGX_MB_252"); }
+    function mb253() external pure returns (bytes32) { return keccak256("BGX_MB_253"); }
+    function mb254() external pure returns (bytes32) { return keccak256("BGX_MB_254"); }
+    function mb255() external pure returns (bytes32) { return keccak256("BGX_MB_255"); }
+    function mb256() external pure returns (bytes32) { return keccak256("BGX_MB_256"); }
+    function mb257() external pure returns (bytes32) { return keccak256("BGX_MB_257"); }
+    function mb258() external pure returns (bytes32) { return keccak256("BGX_MB_258"); }
+    function mb259() external pure returns (bytes32) { return keccak256("BGX_MB_259"); }
+    function mb260() external pure returns (bytes32) { return keccak256("BGX_MB_260"); }
+    function mb261() external pure returns (bytes32) { return keccak256("BGX_MB_261"); }
+    function mb262() external pure returns (bytes32) { return keccak256("BGX_MB_262"); }
+    function mb263() external pure returns (bytes32) { return keccak256("BGX_MB_263"); }
+    function mb264() external pure returns (bytes32) { return keccak256("BGX_MB_264"); }
+    function mb265() external pure returns (bytes32) { return keccak256("BGX_MB_265"); }
+    function mb266() external pure returns (bytes32) { return keccak256("BGX_MB_266"); }
+    function mb267() external pure returns (bytes32) { return keccak256("BGX_MB_267"); }
+    function mb268() external pure returns (bytes32) { return keccak256("BGX_MB_268"); }
+    function mb269() external pure returns (bytes32) { return keccak256("BGX_MB_269"); }
+    function mb270() external pure returns (bytes32) { return keccak256("BGX_MB_270"); }
+    function mb271() external pure returns (bytes32) { return keccak256("BGX_MB_271"); }
+    function mb272() external pure returns (bytes32) { return keccak256("BGX_MB_272"); }
+    function mb273() external pure returns (bytes32) { return keccak256("BGX_MB_273"); }
+    function mb274() external pure returns (bytes32) { return keccak256("BGX_MB_274"); }
+    function mb275() external pure returns (bytes32) { return keccak256("BGX_MB_275"); }
+    function mb276() external pure returns (bytes32) { return keccak256("BGX_MB_276"); }
+    function mb277() external pure returns (bytes32) { return keccak256("BGX_MB_277"); }
+    function mb278() external pure returns (bytes32) { return keccak256("BGX_MB_278"); }
+    function mb279() external pure returns (bytes32) { return keccak256("BGX_MB_279"); }
+    function mb280() external pure returns (bytes32) { return keccak256("BGX_MB_280"); }
+    function mb281() external pure returns (bytes32) { return keccak256("BGX_MB_281"); }
+    function mb282() external pure returns (bytes32) { return keccak256("BGX_MB_282"); }
+    function mb283() external pure returns (bytes32) { return keccak256("BGX_MB_283"); }
+    function mb284() external pure returns (bytes32) { return keccak256("BGX_MB_284"); }
+    function mb285() external pure returns (bytes32) { return keccak256("BGX_MB_285"); }
+    function mb286() external pure returns (bytes32) { return keccak256("BGX_MB_286"); }
+    function mb287() external pure returns (bytes32) { return keccak256("BGX_MB_287"); }
+    function mb288() external pure returns (bytes32) { return keccak256("BGX_MB_288"); }
+    function mb289() external pure returns (bytes32) { return keccak256("BGX_MB_289"); }
+    function mb290() external pure returns (bytes32) { return keccak256("BGX_MB_290"); }
+    function mb291() external pure returns (bytes32) { return keccak256("BGX_MB_291"); }
+    function mb292() external pure returns (bytes32) { return keccak256("BGX_MB_292"); }
+    function mb293() external pure returns (bytes32) { return keccak256("BGX_MB_293"); }
+    function mb294() external pure returns (bytes32) { return keccak256("BGX_MB_294"); }
+    function mb295() external pure returns (bytes32) { return keccak256("BGX_MB_295"); }
+    function mb296() external pure returns (bytes32) { return keccak256("BGX_MB_296"); }
+    function mb297() external pure returns (bytes32) { return keccak256("BGX_MB_297"); }
+    function mb298() external pure returns (bytes32) { return keccak256("BGX_MB_298"); }
+    function mb299() external pure returns (bytes32) { return keccak256("BGX_MB_299"); }
+    function mb300() external pure returns (bytes32) { return keccak256("BGX_MB_300"); }
+}
+
+/*
+BGX Threat Glossary Pack
+tg-0001
+tg-0002
+tg-0003
+tg-0004
+tg-0005
+tg-0006
+tg-0007
+tg-0008
+tg-0009
+tg-0010
+tg-0011
+tg-0012
+tg-0013
+tg-0014
