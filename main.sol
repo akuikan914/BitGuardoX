@@ -508,3 +508,105 @@ contract BitGuardoX {
             bool exists,
             bool active,
             bool timedOut,
+            bool riskyRelay,
+            uint256 penaltyBps,
+            bytes32 threatCluster,
+            bytes32 relayTelemetryDigest
+        )
+    {
+        Session storage s = sessions[sessionId];
+        if (s.account == address(0)) return (false, false, false, false, 0, bytes32(0), bytes32(0));
+        RelayProfile storage relay = relays[s.relayId];
+        bool timeout = block.timestamp > uint256(s.openedAt) + uint256(s.ttlSeconds);
+        bool risk = relay.malwareRiskBps > 2_000 || relay.healthIndex < 350;
+        uint256 penalty = _resolvePenaltyBps(s);
+        bytes32 cluster = _clusterForRelay(relay.healthIndex, relay.malwareRiskBps, relay.bandwidthScore);
+        return (true, !s.closed, timeout, risk, penalty, cluster, relayLatestDigest[s.relayId]);
+    }
+
+    function deriveThreatDigest(
+        bytes32 relayId,
+        bytes32 sampleHash,
+        uint32 malwareFamilyCode,
+        uint32 confidenceBps
+    ) external view returns (bytes32) {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        return keccak256(abi.encodePacked(DOMAIN_SCAN, relayId, relay.operator, sampleHash, malwareFamilyCode, confidenceBps, block.chainid));
+    }
+
+    function getIntelLabel(uint256 index) external pure returns (string memory) {
+        if (index == 0) return "wormhole-dns-bloom";
+        if (index == 1) return "sinkhole-route-cascade";
+        if (index == 2) return "double-wrap-proxy-fork";
+        if (index == 3) return "ghost-packet-fabric";
+        if (index == 4) return "socket-rebind-surge";
+        if (index == 5) return "origin-cloak-inversion";
+        if (index == 6) return "relay-drift-escalation";
+        if (index == 7) return "mirror-host-overrun";
+        if (index == 8) return "fastpath-poison-burst";
+        if (index == 9) return "cluster-jam-needle";
+        return "unknown";
+    }
+
+    function _clusterForRelay(uint32 healthIndex, uint32 malwareRiskBps, uint96 bandwidthScore) internal pure returns (bytes32) {
+        if (malwareRiskBps >= 3800 && healthIndex < 300) return keccak256("BGX_CLUSTER_TITAN_RED");
+        if (malwareRiskBps >= 2800 && healthIndex < 500) return keccak256("BGX_CLUSTER_AURORA_AMBER");
+        if (bandwidthScore > 950 && healthIndex > 900 && malwareRiskBps < 200) return keccak256("BGX_CLUSTER_VELOCITY_CYAN");
+        if (bandwidthScore < 200 && healthIndex < 200) return keccak256("BGX_CLUSTER_FROST_STATIC");
+        return keccak256("BGX_CLUSTER_STANDARD_BLUE");
+    }
+
+    function _resolvePenaltyBps(Session storage s) internal view returns (uint256) {
+        RelayProfile storage relay = relays[s.relayId];
+        bool timedOut = block.timestamp > uint256(s.openedAt) + uint256(s.ttlSeconds == 0 ? uint64(DEFAULT_TTL) : s.ttlSeconds);
+        if (s.flagged || relay.malwareRiskBps > 2_000 || timedOut) {
+            return MALWARE_LOCK_BPS;
+        }
+        return CLEAN_EXIT_BPS;
+    }
+
+    function _safeTransferETH(address payable to, uint256 amountWei) internal {
+        (bool ok, ) = to.call{value: amountWei}("");
+        if (!ok) revert BGXInsufficientBalance();
+    }
+
+    function _deriveAddress(string memory seed) internal pure returns (address) {
+        return address(uint160(uint256(keccak256(abi.encodePacked(seed)))));
+    }
+}
+
+contract BitGuardoXIntelAtlas {
+    function intelCode001() external pure returns (bytes32) { return keccak256("BGX_INTEL_001::dns_tunnel_jitter"); }
+    function intelCode002() external pure returns (bytes32) { return keccak256("BGX_INTEL_002::relay_route_smear"); }
+    function intelCode003() external pure returns (bytes32) { return keccak256("BGX_INTEL_003::egress_vector_flip"); }
+    function intelCode004() external pure returns (bytes32) { return keccak256("BGX_INTEL_004::latency_saw_pattern"); }
+    function intelCode005() external pure returns (bytes32) { return keccak256("BGX_INTEL_005::sni_shadow_clone"); }
+    function intelCode006() external pure returns (bytes32) { return keccak256("BGX_INTEL_006::packet_burst_rake"); }
+    function intelCode007() external pure returns (bytes32) { return keccak256("BGX_INTEL_007::host_rebind_ladder"); }
+    function intelCode008() external pure returns (bytes32) { return keccak256("BGX_INTEL_008::socket_quake_vector"); }
+    function intelCode009() external pure returns (bytes32) { return keccak256("BGX_INTEL_009::reverse_proxy_worm"); }
+    function intelCode010() external pure returns (bytes32) { return keccak256("BGX_INTEL_010::mesh_storm_anchor"); }
+    function intelCode011() external pure returns (bytes32) { return keccak256("BGX_INTEL_011::dns_lure_glide"); }
+    function intelCode012() external pure returns (bytes32) { return keccak256("BGX_INTEL_012::relay_gap_inject"); }
+    function intelCode013() external pure returns (bytes32) { return keccak256("BGX_INTEL_013::cipher_mirror_fold"); }
+    function intelCode014() external pure returns (bytes32) { return keccak256("BGX_INTEL_014::payload_sweep_ripple"); }
+    function intelCode015() external pure returns (bytes32) { return keccak256("BGX_INTEL_015::path_spike_orbit"); }
+    function intelCode016() external pure returns (bytes32) { return keccak256("BGX_INTEL_016::hosttrace_seam"); }
+    function intelCode017() external pure returns (bytes32) { return keccak256("BGX_INTEL_017::ghost_conn_cluster"); }
+    function intelCode018() external pure returns (bytes32) { return keccak256("BGX_INTEL_018::anti_probe_mimic"); }
+    function intelCode019() external pure returns (bytes32) { return keccak256("BGX_INTEL_019::proxy_hive_shift"); }
+    function intelCode020() external pure returns (bytes32) { return keccak256("BGX_INTEL_020::socket_fan_trip"); }
+    function intelCode021() external pure returns (bytes32) { return keccak256("BGX_INTEL_021::dns_flood_tendril"); }
+    function intelCode022() external pure returns (bytes32) { return keccak256("BGX_INTEL_022::relay_hop_obfuscate"); }
+    function intelCode023() external pure returns (bytes32) { return keccak256("BGX_INTEL_023::oblivion_ttl_tilt"); }
+    function intelCode024() external pure returns (bytes32) { return keccak256("BGX_INTEL_024::mirror_exit_knock"); }
+    function intelCode025() external pure returns (bytes32) { return keccak256("BGX_INTEL_025::route_splice_delta"); }
+    function intelCode026() external pure returns (bytes32) { return keccak256("BGX_INTEL_026::latency_poison_web"); }
+    function intelCode027() external pure returns (bytes32) { return keccak256("BGX_INTEL_027::crawler_gate_whisper"); }
+    function intelCode028() external pure returns (bytes32) { return keccak256("BGX_INTEL_028::packet_loop_ember"); }
+    function intelCode029() external pure returns (bytes32) { return keccak256("BGX_INTEL_029::blue_team_probe"); }
+    function intelCode030() external pure returns (bytes32) { return keccak256("BGX_INTEL_030::blackhole_route"); }
+    function intelCode031() external pure returns (bytes32) { return keccak256("BGX_INTEL_031::spectral_dns_melt"); }
+    function intelCode032() external pure returns (bytes32) { return keccak256("BGX_INTEL_032::ttl_phase_break"); }
+    function intelCode033() external pure returns (bytes32) { return keccak256("BGX_INTEL_033::edge_probe_orchid"); }
