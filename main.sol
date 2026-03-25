@@ -202,3 +202,105 @@ contract BitGuardoX {
         if (newTreasury == address(0)) revert BGXInvalidAddress();
         address previous = treasury;
         treasury = newTreasury;
+        emit TreasuryChanged(previous, newTreasury);
+    }
+
+    function setPaused(bool nextPaused) external onlySentinelOrOwner {
+        paused = nextPaused;
+        if (nextPaused) {
+            emit Paused(msg.sender);
+        } else {
+            emit Unpaused(msg.sender);
+        }
+    }
+
+    function setScannerTrust(address scanner, bool trusted) external onlySentinelOrOwner {
+        if (scanner == address(0)) revert BGXInvalidAddress();
+        trustedScanners[scanner] = trusted;
+        emit ScannerTrustUpdated(scanner, trusted);
+    }
+
+    function setChallengeWindowSeconds(uint256 newSeconds) external onlyOwner {
+        if (newSeconds < 15 minutes || newSeconds > 48 hours) revert BGXInvalidConfig();
+        challengeWindowSeconds = newSeconds;
+    }
+
+    function setRelayBondThresholds(uint256 minBondWei, uint256 maxSlashBps) external onlyOwner {
+        if (minBondWei < 0.01 ether || minBondWei > 5 ether) revert BGXInvalidConfig();
+        if (maxSlashBps == 0 || maxSlashBps > BASIS) revert BGXInvalidConfig();
+        relayMinBondWei = minBondWei;
+        relayMaxSlashBps = maxSlashBps;
+    }
+
+    function registerRelay(
+        bytes32 relayId,
+        address relayOperator,
+        uint96 bandwidthScore,
+        uint32 healthIndex,
+        uint32 malwareRiskBps
+    ) external onlySentinelOrOwner {
+        if (relayId == bytes32(0) || relayOperator == address(0)) revert BGXInvalidConfig();
+        if (malwareRiskBps > BASIS) revert BGXInvalidConfig();
+        RelayProfile storage relay = relays[relayId];
+        relay.operator = relayOperator;
+        relay.bandwidthScore = bandwidthScore;
+        relay.healthIndex = healthIndex;
+        relay.malwareRiskBps = malwareRiskBps;
+        relay.active = true;
+        relayLatestDigest[relayId] = keccak256(abi.encodePacked(relayId, relayOperator, bandwidthScore, healthIndex, malwareRiskBps));
+        emit RelayRegistered(relayId, relayOperator, bandwidthScore);
+    }
+
+    function setRelayHealth(
+        bytes32 relayId,
+        uint32 healthIndex,
+        uint32 malwareRiskBps
+    ) external onlySentinelOrOwner {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (malwareRiskBps > BASIS) revert BGXInvalidConfig();
+        relay.healthIndex = healthIndex;
+        relay.malwareRiskBps = malwareRiskBps;
+        relayLatestDigest[relayId] = keccak256(abi.encodePacked(relayId, relay.operator, relay.bandwidthScore, healthIndex, malwareRiskBps, block.number));
+        emit RelayHealthUpdated(relayId, healthIndex, malwareRiskBps);
+    }
+
+    function bondRelay(bytes32 relayId) external payable onlySentinelOrOwner whenNotPaused {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (msg.value == 0) revert BGXInvalidConfig();
+        relayBondWei[relayId] += msg.value;
+        totalRelayBondedWei += msg.value;
+        emit RelayBonded(relayId, msg.sender, msg.value);
+    }
+
+    function withdrawRelayBond(bytes32 relayId, uint256 amountWei) external onlyOwner whenNotPaused {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (amountWei == 0 || amountWei > relayBondWei[relayId]) revert BGXInsufficientBalance();
+        uint256 reserved = relaySlashDebtWei[relayId];
+        if (relayBondWei[relayId] - amountWei < reserved) revert BGXInvalidConfig();
+        relayBondWei[relayId] -= amountWei;
+        totalRelayBondedWei -= amountWei;
+        _safeTransferETH(payable(owner), amountWei);
+        emit RelayBondWithdrawn(relayId, msg.sender, amountWei);
+    }
+
+    function openRelayChallenge(bytes32 relayId, bytes32 challengeRef) external onlySentinelOrOwner whenNotPaused {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        relayChallengeWindowEndsAt[relayId] = block.timestamp + challengeWindowSeconds;
+        emit RelayChallengeOpened(relayId, relayChallengeWindowEndsAt[relayId], challengeRef);
+    }
+
+    function resolveRelayChallenge(bytes32 relayId, bool success, bytes32 challengeRef) external onlySentinelOrOwner whenNotPaused {
+        RelayProfile storage relay = relays[relayId];
+        if (!relay.active) revert BGXRelayUnknown(relayId);
+        if (relayChallengeWindowEndsAt[relayId] == 0) revert BGXInvalidConfig();
+        relayChallengeWindowEndsAt[relayId] = 0;
+        if (!success) {
+            relay.healthIndex = relay.healthIndex > 40 ? relay.healthIndex - 40 : 0;
+            relay.malwareRiskBps = relay.malwareRiskBps + 200 > BASIS ? uint32(BASIS) : relay.malwareRiskBps + 200;
+        }
+        emit RelayChallengeResolved(relayId, success, challengeRef);
+    }
